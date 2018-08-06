@@ -23,3 +23,12 @@ class PascalStringEncodeTest(unittest.TestCase):
 
         decoded_data = util.read_pascal_string(data, 0)
         self.assertEqual(decoded_data, sleep_str)
+
+class ValueToIndexMapTest(unittest.TestCase):
+    def test(self) -> None:
+        data = {'test': 123, 'foo': 456, 'bar': 789}
+        idx_map = util.make_values_to_index_map(data.values())
+        self.assertEqual(len(idx_map), len(data))
+        self.assertEqual(idx_map[123], 0)
+        self.assertEqual(idx_map[456], 1)
+        self.assertEqual(idx_map[789], 2)

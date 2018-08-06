@@ -7,8 +7,36 @@ import typing
 
 _NUL_CHAR = b'\x00'
 
-def nth(iterable, n: int):
+NthIterableType = typing.TypeVar('NthIterableType')
+def nth(iterable: typing.Iterable[NthIterableType], n: int) -> NthIterableType:
     return next(islice(iterable, n, None))
+
+T = typing.TypeVar('T')
+class Index(typing.Generic[T]):
+    __slots__ = ['v', '_idx']
+    def __init__(self, idx: int = 0xffff) -> None:
+        self.v: typing.Optional[T] = None
+        self._idx = idx
+    def set_value(self, values: typing.List[T]) -> None:
+        self.v = values[self._idx] if self._idx != 0xffff else None
+    def set_index(self, idx_map: typing.Dict[T, int]) -> None:
+        self._idx = idx_map[self.v] if self.v else 0xffff
+
+class RequiredIndex(typing.Generic[T]):
+    __slots__ = ['v', '_idx']
+    def __init__(self, idx: int = 0xffff) -> None:
+        self.v: T
+        self._idx = idx
+    def set_value(self, values: typing.List[T]) -> None:
+        self.v = values[self._idx]
+    def set_index(self, idx_map: typing.Dict[T, int]) -> None:
+        self._idx = idx_map[self.v]
+
+def make_values_to_index_map(iterable: typing.Iterable[T]) -> typing.Dict[T, int]:
+    d: typing.Dict[T, int] = dict()
+    for value in iterable:
+        d[value] = len(d)
+    return d
 
 def align_up(n: int, align: int) -> int:
     return (n + align - 1) & -align

@@ -1,47 +1,9 @@
+from collections import deque
 from evfl.actor import Actor, ActorIdentifier
 from evfl.dic import DicReader, DicWriter
-from evfl.event import Event
+from evfl.entry_point import EntryPoint, EntryPointName
+from evfl.event import Event, ActionEvent, SwitchEvent, ForkEvent, JoinEvent, SubFlowEvent
 from evfl.util import *
-
-class EntryPoint(BinaryObject):
-    __slots__ = ['main_event_idx', 'sub_flow_event_indices', '_sub_flow_event_indices_offset_writer']
-    def __init__(self) -> None:
-        super().__init__()
-        self.main_event_idx = 0xffff
-        self.sub_flow_event_indices: typing.List[int] = []
-        self._sub_flow_event_indices_offset_writer: typing.Optional[PlaceholderWriter] = None
-
-    def _do_read(self, stream: ReadStream) -> None:
-        sub_flow_event_indices_offset = stream.read_u64()
-        x8 = stream.read_u64()
-        ptr_x10 = stream.read_u64()
-        num_sub_flow_event_indices = stream.read_u16()
-        x1a = stream.read_u16()
-        self.main_event_idx = stream.read_u16()
-        x1e = stream.read_u16()
-        assert x8 == 0 and x1a == 0 and x1e == 0 and ptr_x10 == 0
-
-        if num_sub_flow_event_indices > 0:
-            assert sub_flow_event_indices_offset != 0
-            with SeekContext(stream, sub_flow_event_indices_offset):
-                self.sub_flow_event_indices = [stream.read_u16() for i in range(num_sub_flow_event_indices)]
-
-    def _do_write(self, stream: WriteStream) -> None:
-        self._sub_flow_event_indices_offset_writer = stream.write_placeholder_ptr_if(bool(self.sub_flow_event_indices), register=True)
-        stream.write(u64(0)) # x8
-        stream.write_nullptr(register=True) # ptr_x10
-        stream.write(u16(len(self.sub_flow_event_indices)))
-        stream.write(u16(0)) # x1a
-        stream.write(u16(self.main_event_idx))
-        stream.write(u16(0)) # x1e
-
-    def write_extra_data(self, stream: WriteStream) -> None:
-        if self._sub_flow_event_indices_offset_writer:
-            self._sub_flow_event_indices_offset_writer.write_current_offset(stream)
-            for idx in self.sub_flow_event_indices:
-                stream.write(u16(idx))
-            stream.align(8)
-        stream.skip(0x18)
 
 class Flowchart(BinaryObject):
     def __init__(self) -> None:
@@ -49,7 +11,7 @@ class Flowchart(BinaryObject):
         self.name = ''
         self.actors: typing.Dict[ActorIdentifier, Actor] = dict()
         self.events: typing.Dict[str, Event] = dict()
-        self.entry_points: typing.Dict[str, EntryPoint] = dict()
+        self.entry_points: typing.Dict[EntryPointName, EntryPoint] = dict()
 
     def _do_read(self, stream: ReadStream) -> None:
         magic = stream.read_u32()
@@ -68,27 +30,35 @@ class Flowchart(BinaryObject):
         assert x1a == 0 and x1c == 0 and x1e == 0
         self.name = stream.read_string_ref()
 
+        actors = []
         with SeekContext(stream, stream.read_u64()):
             for i in range(num_actors):
                 actor = Actor()
                 actor.read(stream)
+                actors.append(actor)
                 self.actors[actor.identifier] = actor
 
+        events = []
         with SeekContext(stream, stream.read_u64()):
             for i in range(num_events):
                 event = Event()
                 event.read(stream)
+                events.append(event)
                 self.events[event.name] = event
 
         entry_point_dic = stream.read_ptr_object(DicReader)
         assert entry_point_dic is not None
         assert len(entry_point_dic.items) == num_entry_points
 
+        entry_points = []
         with SeekContext(stream, stream.read_u64()):
             for entry_point_name in entry_point_dic.items:
-                entry_point = EntryPoint()
+                entry_point = EntryPoint(entry_point_name)
                 entry_point.read(stream)
-                self.entry_points[entry_point_name] = entry_point
+                entry_points.append(entry_point)
+                self.entry_points[entry_point.name] = entry_point
+
+        self._set_values_from_indexes(actors, events, entry_points)
 
     def _get_action_count(self) -> int:
         count = 0
@@ -103,6 +73,8 @@ class Flowchart(BinaryObject):
         return count
 
     def _do_write(self, stream: WriteStream) -> None:
+        self._set_indexes_from_values()
+
         self_offset = stream.tell()
         stream.write(b'EVFL')
         string_pool_rel_offset = stream.write_placeholder_u32()
@@ -137,7 +109,7 @@ class Flowchart(BinaryObject):
 
         # Entry point DIC
         for entry_point_name in self.entry_points.keys():
-            entry_points_dic.insert(entry_point_name)
+            entry_points_dic.insert(entry_point_name.v)
         entry_points_dic.write(stream)
         stream.align(8)
 
@@ -164,3 +136,62 @@ class Flowchart(BinaryObject):
 
         stream.align(8)
         string_pool_rel_offset.write(stream, u32(stream.tell() - self_offset))
+
+    def _set_values_from_indexes(self, actors: typing.List[Actor], events: typing.List[Event], entry_points: typing.List[EntryPoint]) -> None:
+        # Yes, this is really ugly. I'm sorry.
+        for actor in actors:
+            actor.argument_entry_point.set_value(entry_points)
+
+        for event in events:
+            data = event.data
+            if isinstance(data, ActionEvent):
+                data.nxt.set_value(events)
+                data.actor.set_value(actors)
+                data.actor_action.set_value(actors[data.actor._idx].actions)
+            elif isinstance(data, SwitchEvent):
+                data.actor.set_value(actors)
+                data.actor_query.set_value(actors[data.actor._idx].queries)
+                for case in data.cases.values():
+                    case.set_value(events)
+            elif isinstance(data, ForkEvent):
+                data.join.set_value(events)
+                for fork in data.forks:
+                    fork.set_value(events)
+            elif isinstance(data, JoinEvent):
+                data.nxt.set_value(events)
+            elif isinstance(data, SubFlowEvent):
+                data.nxt.set_value(events)
+
+        for entry_point in entry_points:
+            entry_point.main_event.set_value(events)
+
+    def _set_indexes_from_values(self) -> None:
+        actor_to_idx = make_values_to_index_map(self.actors.values())
+        event_to_idx = make_values_to_index_map(self.events.values())
+        entry_point_to_idx = make_values_to_index_map(self.entry_points.values())
+
+        for actor in self.actors.values():
+            actor.argument_entry_point.set_index(entry_point_to_idx)
+
+        for event in self.events.values():
+            data = event.data
+            if isinstance(data, ActionEvent):
+                data.nxt.set_index(event_to_idx)
+                data.actor.set_index(actor_to_idx)
+                data.actor_action._idx = data.actor.v.actions.index(data.actor_action.v)
+            elif isinstance(data, SwitchEvent):
+                data.actor.set_index(actor_to_idx)
+                data.actor_query._idx = data.actor.v.queries.index(data.actor_query.v)
+                for case in data.cases.values():
+                    case.set_index(event_to_idx)
+            elif isinstance(data, ForkEvent):
+                data.join.set_index(event_to_idx)
+                for fork in data.forks:
+                    fork.set_index(event_to_idx)
+            elif isinstance(data, JoinEvent):
+                data.nxt.set_index(event_to_idx)
+            elif isinstance(data, SubFlowEvent):
+                data.nxt.set_index(event_to_idx)
+
+        for entry_point in self.entry_points.values():
+            entry_point.main_event.set_index(event_to_idx)

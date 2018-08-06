@@ -1,16 +1,20 @@
 from evfl.common import ActorIdentifier
 from evfl.container import Container
+from evfl.entry_point import EntryPoint
 from evfl.util import *
 
 class Actor(BinaryObject):
     def __init__(self) -> None:
         super().__init__()
         self.identifier = ActorIdentifier()
+        # If specified, actor identifier arguments that are passed as parameters
+        # with this argument name will bind to this actor.
         self.argument_name = ''
+        # Entry point where this actor is used.
+        self.argument_entry_point: Index[EntryPoint] = Index()
         self.actions: typing.List[str] = []
         self.queries: typing.List[str] = []
         self.params: typing.Optional[Container] = None
-        self.entry_point_idx: int = 0xffff
         # XXX: investigate what this is (set to 1 for flowcharts, but different for timeline actors)
         self.x36: int = 0xffff
 
@@ -26,7 +30,7 @@ class Actor(BinaryObject):
         self.params = stream.read_ptr_object(Container)
         num_actions = stream.read_u16()
         num_queries = stream.read_u16()
-        self.entry_point_idx = stream.read_u16()
+        self.argument_entry_point._idx = stream.read_u16()
         self.x36 = stream.read_u16()
 
         with SeekContext(stream, actions_offset):
@@ -46,7 +50,7 @@ class Actor(BinaryObject):
         self._params_offset_writer = stream.write_placeholder_ptr_if(bool(self.params))
         stream.write(u16(len(self.actions) if self.actions else 0))
         stream.write(u16(len(self.queries) if self.queries else 0))
-        stream.write(u16(self.entry_point_idx))
+        stream.write(u16(self.argument_entry_point._idx))
         stream.write(u16(self.x36))
 
     def write_extra_data(self, stream: WriteStream) -> None:
