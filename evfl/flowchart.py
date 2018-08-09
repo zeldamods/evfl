@@ -193,5 +193,35 @@ class Flowchart(BinaryObject):
             elif isinstance(data, SubFlowEvent):
                 data.nxt.set_index(event_to_idx)
 
+        # A dict is used to have set-like properties *and* keep insertion order.
+        def collect_sub_flow_events(entry: Event, sub_flow_events: typing.Dict[Event, None], visited: typing.Set[Event]) -> None:
+            stack = deque([entry])
+            while stack:
+                event = stack.popleft()
+                if event in visited:
+                    continue
+                visited.add(event)
+                data = event.data
+                if isinstance(data, ActionEvent):
+                    if data.nxt.v:
+                        stack.append(data.nxt.v)
+                elif isinstance(data, SwitchEvent):
+                    for value, case in data.cases.items():
+                        collect_sub_flow_events(case.v, sub_flow_events, visited)
+                elif isinstance(data, ForkEvent):
+                    for fork in data.forks:
+                        collect_sub_flow_events(fork.v, sub_flow_events, visited)
+                    stack.append(data.join.v)
+                elif isinstance(data, JoinEvent):
+                    if data.nxt.v:
+                        stack.append(data.nxt.v)
+                elif isinstance(data, SubFlowEvent):
+                    sub_flow_events[event] = None
+                    if data.nxt.v:
+                        stack.append(data.nxt.v)
+
         for entry_point in self.entry_points.values():
             entry_point.main_event.set_index(event_to_idx)
+            sub_flow_events: typing.Dict[Event, None] = dict()
+            collect_sub_flow_events(entry_point.main_event.v, sub_flow_events, set())
+            entry_point._sub_flow_event_indices = [event_to_idx[e] for e in sub_flow_events.keys()]
