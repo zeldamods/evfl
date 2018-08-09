@@ -173,28 +173,9 @@ class Flowchart(BinaryObject):
         for actor in self.actors.values():
             actor.argument_entry_point.set_index(entry_point_to_idx)
 
-        for event in self.events.values():
-            data = event.data
-            if isinstance(data, ActionEvent):
-                data.nxt.set_index(event_to_idx)
-                data.actor.set_index(actor_to_idx)
-                data.actor_action._idx = data.actor.v.actions.index(data.actor_action.v)
-            elif isinstance(data, SwitchEvent):
-                data.actor.set_index(actor_to_idx)
-                data.actor_query._idx = data.actor.v.queries.index(data.actor_query.v)
-                for case in data.cases.values():
-                    case.set_index(event_to_idx)
-            elif isinstance(data, ForkEvent):
-                data.join.set_index(event_to_idx)
-                for fork in data.forks:
-                    fork.set_index(event_to_idx)
-            elif isinstance(data, JoinEvent):
-                data.nxt.set_index(event_to_idx)
-            elif isinstance(data, SubFlowEvent):
-                data.nxt.set_index(event_to_idx)
-
         # A dict is used to have set-like properties *and* keep insertion order.
-        def collect_sub_flow_events(entry: Event, sub_flow_events: typing.Dict[Event, None], visited: typing.Set[Event]) -> None:
+        def traverse_events(entry: Event, sub_flow_events: typing.Dict[Event, None], visited: typing.Set[Event]) -> None:
+            """Traverse the event graph and (a) collect sub flow events; (b) set indexes."""
             stack = deque([entry])
             while stack:
                 event = stack.popleft()
@@ -203,19 +184,29 @@ class Flowchart(BinaryObject):
                 visited.add(event)
                 data = event.data
                 if isinstance(data, ActionEvent):
+                    data.nxt.set_index(event_to_idx)
+                    data.actor.set_index(actor_to_idx)
+                    data.actor_action._idx = data.actor.v.actions.index(data.actor_action.v)
                     if data.nxt.v:
                         stack.append(data.nxt.v)
                 elif isinstance(data, SwitchEvent):
+                    data.actor.set_index(actor_to_idx)
+                    data.actor_query._idx = data.actor.v.queries.index(data.actor_query.v)
                     for value, case in data.cases.items():
-                        collect_sub_flow_events(case.v, sub_flow_events, visited)
+                        case.set_index(event_to_idx)
+                        traverse_events(case.v, sub_flow_events, visited)
                 elif isinstance(data, ForkEvent):
+                    data.join.set_index(event_to_idx)
                     for fork in data.forks:
-                        collect_sub_flow_events(fork.v, sub_flow_events, visited)
+                        fork.set_index(event_to_idx)
+                        traverse_events(fork.v, sub_flow_events, visited)
                     stack.append(data.join.v)
                 elif isinstance(data, JoinEvent):
+                    data.nxt.set_index(event_to_idx)
                     if data.nxt.v:
                         stack.append(data.nxt.v)
                 elif isinstance(data, SubFlowEvent):
+                    data.nxt.set_index(event_to_idx)
                     sub_flow_events[event] = None
                     if data.nxt.v:
                         stack.append(data.nxt.v)
@@ -223,5 +214,5 @@ class Flowchart(BinaryObject):
         for entry_point in self.entry_points.values():
             entry_point.main_event.set_index(event_to_idx)
             sub_flow_events: typing.Dict[Event, None] = dict()
-            collect_sub_flow_events(entry_point.main_event.v, sub_flow_events, set())
+            traverse_events(entry_point.main_event.v, sub_flow_events, set())
             entry_point._sub_flow_event_indices = [event_to_idx[e] for e in sub_flow_events.keys()]
