@@ -33,3 +33,16 @@ class ActorIdentifier(BinaryObject):
 
 class Argument(str):
     pass
+
+class StringHolder:
+    __slots__ = ['v']
+    def __init__(self, v='') -> None:
+        self.v = v
+    def __str__(self) -> str:
+        return self.v
+    def __hash__(self) -> int:
+        return hash(self.v)
+    def __eq__(self, other) -> bool:
+        return self.v == other.v
+    def __ne__(self, other) -> bool:
+        return not (self == other)

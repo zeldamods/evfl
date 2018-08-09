@@ -1,18 +1,9 @@
+from evfl.common import StringHolder
 import evfl.event
 from evfl.util import *
 
-class EntryPointName:
-    __slots__ = ['v']
-    def __init__(self, v='') -> None:
-        self.v = v
-    def __str__(self) -> str:
-        return self.v
-    def __hash__(self) -> int:
-        return hash(self.v)
-    def __eq__(self, other) -> bool:
-        return self.v == other.v
-    def __ne__(self, other) -> bool:
-        return not (self == other)
+class EntryPointName(StringHolder):
+    __slots__ = ()
 
 class EntryPoint(BinaryObject):
     __slots__ = ['name', 'main_event', '_sub_flow_event_indices', '_sub_flow_event_indices_offset_writer']

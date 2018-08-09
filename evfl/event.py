@@ -1,5 +1,6 @@
 import abc
 import evfl.actor
+from evfl.common import StringHolder
 from evfl.container import Container
 from evfl.enums import EventType
 from evfl.util import *
@@ -24,7 +25,7 @@ class ActionEvent(BaseEvent):
     def __init__(self) -> None:
         self.nxt: Index[Event] = Index()
         self.actor: RequiredIndex[evfl.actor.Actor] = RequiredIndex()
-        self.actor_action: RequiredIndex[str] = RequiredIndex()
+        self.actor_action: RequiredIndex[StringHolder] = RequiredIndex()
         self.params: typing.Optional[Container] = None
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
 
@@ -54,7 +55,7 @@ class SwitchEvent(BaseEvent):
     __slots__ = ['actor', 'actor_query', 'params', 'cases', '_params_offset_writer', '_cases_offset_writer']
     def __init__(self) -> None:
         self.actor: RequiredIndex[evfl.actor.Actor] = RequiredIndex()
-        self.actor_query: RequiredIndex[str] = RequiredIndex()
+        self.actor_query: RequiredIndex[StringHolder] = RequiredIndex()
         self.params: typing.Optional[Container] = None
         self.cases: typing.Dict[int, RequiredIndex[Event]] = dict()
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
