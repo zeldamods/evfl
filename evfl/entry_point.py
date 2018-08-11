@@ -2,14 +2,11 @@ from evfl.common import StringHolder
 import evfl.event
 from evfl.util import *
 
-class EntryPointName(StringHolder):
-    __slots__ = ()
-
 class EntryPoint(BinaryObject):
     __slots__ = ['name', 'main_event', '_sub_flow_event_indices', '_sub_flow_event_indices_offset_writer']
     def __init__(self, name: str) -> None:
         super().__init__()
-        self.name = EntryPointName(name)
+        self.name = name
         self.main_event: RequiredIndex[evfl.event.Event] = RequiredIndex()
         self._sub_flow_event_indices: typing.List[int] = []
         self._sub_flow_event_indices_offset_writer: typing.Optional[PlaceholderWriter] = None

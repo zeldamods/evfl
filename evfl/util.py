@@ -1,15 +1,10 @@
 import abc
 from collections import defaultdict
-from itertools import islice
 import io
 import struct
 import typing
 
 _NUL_CHAR = b'\x00'
-
-NthIterableType = typing.TypeVar('NthIterableType')
-def nth(iterable: typing.Iterable[NthIterableType], n: int) -> NthIterableType:
-    return next(islice(iterable, n, None))
 
 T = typing.TypeVar('T')
 class Index(typing.Generic[T]):

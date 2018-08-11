@@ -4,4 +4,3 @@ from evfl.container import Container
 from evfl.event import Event, ActionEvent, SwitchEvent, ForkEvent, JoinEvent, SubFlowEvent
 from evfl.evfl import EventFlow
 from evfl.flowchart import Flowchart
-from evfl.util import nth
