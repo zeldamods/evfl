@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="evfl",
-    version="0.10.0",
+    version="0.11.0",
     author="leoetlino",
     author_email="leo@leolam.fr",
     description="Library for parsing and writing Breath of the Wild Event Flow files",

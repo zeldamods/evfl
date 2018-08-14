@@ -205,6 +205,12 @@ class Flowchart(BinaryObject):
                     if data.nxt.v:
                         stack.append(data.nxt.v)
 
+        for event in self.events:
+            data = event.data
+            if isinstance(data, ActionEvent) or isinstance(data, SwitchEvent):
+                if not data.actor.v in actor_to_idx:
+                    raise ValueError('Event references an unknown actor')
+
         for entry_point in self.entry_points:
             entry_point.main_event.set_index(event_to_idx)
             sub_flow_events: typing.Dict[Event, None] = dict()
