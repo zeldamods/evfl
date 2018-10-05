@@ -5,6 +5,9 @@ from evfl.container import Container
 from evfl.enums import EventType
 from evfl.util import *
 
+def _should_write_params(params: typing.Optional[Container]) -> bool:
+    return bool(params and params.data)
+
 class BaseEvent(metaclass=abc.ABCMeta):
     __slots__ = [] # type: ignore
 
@@ -42,7 +45,7 @@ class ActionEvent(BaseEvent):
         stream.write(u16(self.nxt._idx))
         stream.write(u16(self.actor._idx))
         stream.write(u16(self.actor_action._idx))
-        self._params_offset_writer = stream.write_placeholder_ptr_if(bool(self.params))
+        self._params_offset_writer = stream.write_placeholder_ptr_if(_should_write_params(self.params))
         stream.write(u64(0))
         stream.write(u64(0))
 
@@ -80,7 +83,7 @@ class SwitchEvent(BaseEvent):
         stream.write(u16(len(self.cases))) # can be zero.
         stream.write(u16(self.actor._idx))
         stream.write(u16(self.actor_query._idx))
-        self._params_offset_writer = stream.write_placeholder_ptr_if(bool(self.params))
+        self._params_offset_writer = stream.write_placeholder_ptr_if(_should_write_params(self.params))
         self._cases_offset_writer = stream.write_placeholder_ptr_if(bool(self.cases), register=True)
         stream.write(u64(0))
 
@@ -184,7 +187,7 @@ class SubFlowEvent(BaseEvent):
         stream.write(u16(self.nxt._idx))
         stream.write(u16(0)) # Unused
         stream.write(u16(0)) # Unused
-        self._params_offset_writer = stream.write_placeholder_ptr_if(bool(self.params))
+        self._params_offset_writer = stream.write_placeholder_ptr_if(_should_write_params(self.params))
         assert self.entry_point_name
         stream.write_string_ref(self.res_flowchart_name)
         stream.write_string_ref(self.entry_point_name)
