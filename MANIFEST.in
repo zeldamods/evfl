@@ -1,2 +1,4 @@
 prune evfl/tests/
 exclude **/_test.py
+include versioneer.py
+include evfl/_version.py

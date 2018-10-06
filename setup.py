@@ -1,11 +1,13 @@
 import setuptools
+import versioneer
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="evfl",
-    version="0.11.2",
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     author="leoetlino",
     author_email="leo@leolam.fr",
     description="Library for parsing and writing Breath of the Wild Event Flow files",
