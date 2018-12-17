@@ -15,7 +15,7 @@ class Actor(BinaryObject):
         self.actions: typing.List[StringHolder] = []
         self.queries: typing.List[StringHolder] = []
         self.params: typing.Optional[Container] = None
-        # XXX: investigate what this is (set to 1 for flowcharts, but different for timeline actors)
+        # TODO: investigate what this is (always 1 for flowcharts, but sometimes > 1 for timelines)
         self.x36: int = 0xffff
 
         self._actions_offset_writer: typing.Optional[PlaceholderWriter] = None
