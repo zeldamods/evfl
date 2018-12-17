@@ -125,6 +125,18 @@ class ReadStream(Stream):
             obj.read(self) # type: ignore
         return obj
 
+    def read_ptr_objects(self, t: typing.Type[ReadObjectType], n, *args) -> typing.List[ReadObjectType]:
+        ptr = self.read_u64()
+        if ptr == 0 or n == 0:
+            return []
+        result = []
+        with SeekContext(self, ptr):
+            for i in range(n):
+                obj = t(*args) # type: ignore
+                obj.read(self) # type: ignore
+                result.append(obj)
+        return result
+
 class PlaceholderWriter:
     __slots__ = ['_offset']
     def __init__(self, offset: int) -> None:

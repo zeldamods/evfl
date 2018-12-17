@@ -29,18 +29,8 @@ class Flowchart(BinaryObject):
         x1e = stream.read_u16()
         assert x1a == 0 and x1c == 0 and x1e == 0
         self.name = stream.read_string_ref()
-
-        with SeekContext(stream, stream.read_u64()):
-            for i in range(num_actors):
-                actor = Actor()
-                actor.read(stream)
-                self.actors.append(actor)
-
-        with SeekContext(stream, stream.read_u64()):
-            for i in range(num_events):
-                event = Event()
-                event.read(stream)
-                self.events.append(event)
+        self.actors = stream.read_ptr_objects(Actor, num_actors)
+        self.events = stream.read_ptr_objects(Event, num_events)
 
         entry_point_dic = stream.read_ptr_object(DicReader)
         assert entry_point_dic is not None
