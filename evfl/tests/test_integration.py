@@ -31,6 +31,13 @@ class IntegrationTest(unittest.TestCase):
             'Animal_Forest.bfevfl',
             # Has a switch event with no cases (DummyQuery)
             'Demo346_0.bfevfl',
+
+            # Timelines
+            'Demo102_0.bfevtm',
+            'Demo103_0.bfevtm',
+            'Demo103_0_effect.bfevtm',
+            'Demo149_1.bfevtm',
+            'Demo149_1_effect.bfevtm',
         ]
 
         for file in files:
