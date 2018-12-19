@@ -84,13 +84,13 @@ class EventFlow:
         stream.write(u32(0)) # Unused?
         self._write_root_structure_metadata(stream)
 
-        first_block_offset_writer.write(stream, u16(stream.tell()))
-
         if self.flowchart:
+            first_block_offset_writer.write(stream, u16(stream.tell()))
             self.flowchart.write(stream)
 
         if self.timeline:
             self.timeline.write(stream)
+            first_block_offset_writer.write(stream, u16(self.timeline._self_offset))
 
         stream.finalise()
         file_size_writer.write(stream, u32(stream.tell()))

@@ -18,9 +18,14 @@ class Actor(BinaryObject):
         # TODO: investigate what this is (always 1 for flowcharts, but sometimes > 1 for timelines)
         self.x36: int = 0xffff
 
+        # Offsets are used to handle the case where write_extra_data is called before _do_write
+        # (which happens for timelines).
         self._actions_offset_writer: typing.Optional[PlaceholderWriter] = None
+        self._actions_offset: typing.Optional[int] = None
         self._queries_offset_writer: typing.Optional[PlaceholderWriter] = None
+        self._queries_offset: typing.Optional[int] = None
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
+        self._params_offset: typing.Optional[int] = None
 
     def _do_read(self, stream: ReadStream) -> None:
         self.identifier.read(stream)
@@ -53,21 +58,38 @@ class Actor(BinaryObject):
         stream.write(u16(self.argument_entry_point._idx))
         stream.write(u16(self.x36))
 
+        if self._actions_offset:
+            self._actions_offset_writer.write(stream, u64(self._actions_offset))
+        if self._queries_offset:
+            self._queries_offset_writer.write(stream, u64(self._queries_offset))
+        if self._params_offset:
+            self._params_offset_writer.write(stream, u64(self._params_offset))
+
     def write_extra_data(self, stream: WriteStream) -> None:
-        """Writes the param container and string pointer arrays."""
-        if self._params_offset_writer and self.params:
+        """Writes the param container and string pointer arrays.
+        Unlike other write_extra_data functions, this can be called before write()."""
+        if self.params:
             stream.align(8)
-            self._params_offset_writer.write_current_offset(stream)
+            if self._params_offset_writer:
+                self._params_offset_writer.write_current_offset(stream)
+            else:
+                self._params_offset = stream.tell()
             self.params.write(stream)
 
-        if self._actions_offset_writer and self.actions:
+        if self.actions:
             stream.align(8)
-            self._actions_offset_writer.write_current_offset(stream)
+            if self._actions_offset_writer:
+                self._actions_offset_writer.write_current_offset(stream)
+            else:
+                self._actions_offset = stream.tell()
             for s in self.actions:
                 stream.write_string_ref(s.v)
 
-        if self._queries_offset_writer and self.queries:
+        if self.queries:
             stream.align(8)
-            self._queries_offset_writer.write_current_offset(stream)
+            if self._queries_offset_writer:
+                self._queries_offset_writer.write_current_offset(stream)
+            else:
+                self._queries_offset = stream.tell()
             for s in self.queries:
                 stream.write_string_ref(s.v)

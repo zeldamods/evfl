@@ -297,13 +297,22 @@ class BinaryObject(metaclass=abc.ABCMeta):
     def _do_write(self, stream: WriteStream) -> None:
         pass
 
+    def _get_overriding_offset_to_self(self) -> int:
+        return -1
+
     def read(self, stream: ReadStream) -> None:
         self._do_read(stream)
 
     def write(self, stream: WriteStream) -> None:
-        current_pos = stream.tell()
+        start_pos = stream.tell()
+        self._do_write(stream)
+        end_pos = stream.tell()
+
+        stream.seek(start_pos)
+        value = self._get_overriding_offset_to_self()
+        if value == -1:
+            value = start_pos
         for offset in self._offsets_to_this:
             stream.seek(offset)
-            stream.write(u64(current_pos))
-        stream.seek(current_pos)
-        self._do_write(stream)
+            stream.write(u64(value))
+        stream.seek(end_pos)
