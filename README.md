@@ -1,9 +1,7 @@
-# Library for parsing and writing Breath of the Wild Event Flow files
+# Library for parsing and writing Nintendo EventFlow binary files
 
-`evfl` is able to parse and rewrite every single flowchart event flow file (.bfevfl)
-found in Breath of the Wild.
-
-It is however currently not capable of reading timeline files (.bfevtm).
+`evfl` is able to parse and rewrite every single event flow found in
+*Breath of the Wild*, both flowcharts (bfevfl) and timelines (bfevtm).
 
 ## Usage
 
