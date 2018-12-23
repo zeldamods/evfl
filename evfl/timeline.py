@@ -71,20 +71,20 @@ class Oneshot(BinaryObject):
 class Cut(BinaryObject):
     def __init__(self) -> None:
         super().__init__()
-        self.duration = -1.0 # TODO: is this correct?
+        self.start_time = -1.0 # TODO: is this correct?
         self.x4 = 0xffffffff # TODO: what is this?
         self.name = ''
         self.params: typing.Optional[Container] = None
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
 
     def _do_read(self, stream: ReadStream) -> None:
-        self.duration = stream.read_f32()
+        self.start_time = stream.read_f32()
         self.x4 = stream.read_u32()
         self.name = stream.read_string_ref()
         self.params = stream.read_ptr_object(Container)
 
     def _do_write(self, stream: WriteStream) -> None:
-        stream.write(f32(self.duration))
+        stream.write(f32(self.start_time))
         stream.write(u32(self.x4))
         stream.write_string_ref(self.name)
         self._params_offset_writer = stream.write_placeholder_ptr_if(bool(self.params))
