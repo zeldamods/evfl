@@ -27,6 +27,17 @@ class Actor(BinaryObject):
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
         self._params_offset: typing.Optional[int] = None
 
+    def find_action(self, name: str):
+        return self._find_action_or_query(self.actions, name)
+    def find_query(self, name: str):
+        return self._find_action_or_query(self.queries, name)
+
+    def _find_action_or_query(self, l: typing.List[StringHolder], name: str) -> StringHolder:
+        for x in l:
+            if x.v == name:
+                return x
+        raise ValueError(name)
+
     def _do_read(self, stream: ReadStream) -> None:
         self.identifier.read(stream)
         self.argument_name = stream.read_string_ref()

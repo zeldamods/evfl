@@ -6,6 +6,14 @@ import typing
 
 _NUL_CHAR = b'\x00'
 
+class IdGenerator:
+    def __init__(self):
+        self._id = 0
+    def gen_id(self):
+        r = self._id
+        self._id += 1
+        return r
+
 T = typing.TypeVar('T')
 class Index(typing.Generic[T]):
     __slots__ = ['v', '_idx']
@@ -26,6 +34,16 @@ class RequiredIndex(typing.Generic[T]):
         self.v = values[self._idx]
     def set_index(self, idx_map: typing.Dict[T, int]) -> None:
         self._idx = idx_map[self.v]
+
+def make_index(v: typing.Optional[T]) -> Index[T]:
+    idx: Index[T] = Index()
+    idx.v = v
+    return idx
+
+def make_rindex(v: T) -> RequiredIndex[T]:
+    idx: RequiredIndex[T] = RequiredIndex()
+    idx.v = v
+    return idx
 
 def make_values_to_index_map(iterable: typing.Iterable[T]) -> typing.Dict[T, int]:
     d: typing.Dict[T, int] = dict()

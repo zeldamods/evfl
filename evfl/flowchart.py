@@ -1,5 +1,6 @@
 from collections import deque
 from evfl.actor import Actor, ActorIdentifier
+from evfl.container import Container
 from evfl.dic import DicReader, DicWriter
 from evfl.entry_point import EntryPoint
 from evfl.event import Event, ActionEvent, SwitchEvent, ForkEvent, JoinEvent, SubFlowEvent
@@ -12,6 +13,61 @@ class Flowchart(BinaryObject):
         self.actors: typing.List[Actor] = []
         self.events: typing.List[Event] = []
         self.entry_points: typing.List[EntryPoint] = []
+
+    def add_event(self, event: Event, idgen: IdGenerator):
+        event.name = 'AutoEvent%d' % idgen.gen_id()
+        self.events.append(event)
+
+    """
+    Add a chain of action events (automatically inserting WaitFrames when needed
+    to give Breath of the Wild's event system a chance to clean up action contexts)
+    and add an entry point to the first event in the chain.
+    """
+    def botw_add_action_chain_and_entry(self, entry_name: str, events: typing.List[Event],
+                                        idgen: IdGenerator, actions_per_sequence=10) -> None:
+        EventSystemActor = self.find_actor(ActorIdentifier('EventSystemActor'))
+        WaitFrame = EventSystemActor.find_action('Demo_WaitFrame')
+
+        def add_wait_frame_event(nxt: typing.Optional[Event]) -> Event:
+            wait_evt = Event()
+            wait_evt.data = ActionEvent()
+            wait_evt.data.actor = make_rindex(EventSystemActor)
+            wait_evt.data.actor_action = make_rindex(WaitFrame)
+            wait_evt.data.params = Container()
+            wait_evt.data.params.data['IsWaitFinish'] = True
+            wait_evt.data.params.data['Frame'] = 1
+            wait_evt.data.nxt = make_index(nxt)
+            self.add_event(wait_evt, idgen)
+            return wait_evt
+
+        for evt in events:
+            self.add_event(evt, idgen)
+
+        for i in range(len(events) - 1):
+            evt = events[i]
+            assert isinstance(evt.data, ActionEvent)
+            next_evt = events[i + 1]
+
+            if i != 0 and (i + 1) % actions_per_sequence == 0:
+                wait_evt = add_wait_frame_event(next_evt)
+                evt.data.nxt = make_index(wait_evt)
+            else:
+                evt.data.nxt = make_index(next_evt)
+
+        first_wait_evt = add_wait_frame_event(events[0])
+        last_wait_evt = add_wait_frame_event(None)
+        assert isinstance(events[-1].data, ActionEvent)
+        events[-1].data.nxt = make_index(last_wait_evt)
+
+        entry_point = EntryPoint(entry_name)
+        entry_point.main_event = make_rindex(first_wait_evt)
+        self.entry_points.append(entry_point)
+
+    def find_actor(self, identifier: ActorIdentifier) -> Actor:
+        for actor in self.actors:
+            if actor.identifier == identifier:
+                return actor
+        raise ValueError(identifier)
 
     def _do_read(self, stream: ReadStream) -> None:
         magic = stream.read_u32()
