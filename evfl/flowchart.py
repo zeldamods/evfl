@@ -60,7 +60,7 @@ class Flowchart(BinaryObject):
         events[-1].data.nxt = make_index(last_wait_evt)
 
         entry_point = EntryPoint(entry_name)
-        entry_point.main_event = make_rindex(first_wait_evt)
+        entry_point.main_event = make_index(first_wait_evt)
         self.entry_points.append(entry_point)
 
     def find_actor(self, identifier: ActorIdentifier) -> Actor:
@@ -234,8 +234,10 @@ class Flowchart(BinaryObject):
                 data.nxt.set_index(event_to_idx)
 
         # A dict is used to have set-like properties *and* keep insertion order.
-        def traverse_events(entry: Event, sub_flow_events: typing.Dict[Event, None], visited: typing.Set[Event]) -> None:
+        def traverse_events(entry: typing.Optional[Event], sub_flow_events: typing.Dict[Event, None], visited: typing.Set[Event]) -> None:
             """Traverse the event graph and collect sub flow events."""
+            if not entry:
+                return
             stack = deque([entry])
             while stack:
                 event = stack.popleft()

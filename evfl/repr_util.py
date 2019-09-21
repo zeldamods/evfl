@@ -100,8 +100,9 @@ def generate_flowchart_graph(flow: EventFlow) -> list:
 
     for i, entry in enumerate(flow.flowchart.entry_points):
         builder.add_node(-1000-i, 'entry', {'name': entry.name})
-        builder.add_edge(-1000-i, event_idx_map[entry.main_event.v])
-        traverse(entry.main_event.v, [])
+        if entry.main_event.v:
+            builder.add_edge(-1000-i, event_idx_map[entry.main_event.v])
+            traverse(entry.main_event.v, [])
 
     # Add events that are not linked from any entry point.
     # This may generate incomplete graphs.

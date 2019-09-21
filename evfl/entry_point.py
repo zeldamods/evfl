@@ -7,7 +7,7 @@ class EntryPoint(BinaryObject):
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name
-        self.main_event: RequiredIndex[evfl.event.Event] = RequiredIndex()
+        self.main_event: Index[evfl.event.Event] = Index()
         self._sub_flow_event_indices: typing.List[int] = []
         self._sub_flow_event_indices_offset_writer: typing.Optional[PlaceholderWriter] = None
 
