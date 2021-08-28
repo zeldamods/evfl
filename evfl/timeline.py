@@ -4,15 +4,18 @@ from evfl.common import StringHolder
 from evfl.util import *
 
 class Clip(BinaryObject):
-    __slots__ = ['start_time', 'duration', 'actor', 'actor_action', 'xc', 'params', '_params_offset_writer']
+    __slots__ = ['start_time', 'duration', 'actor', 'actor_action', 'actor_concurrent_clip', 'params', '_params_offset_writer']
     def __init__(self) -> None:
         super().__init__()
         self.start_time = -1.0
         self.duration = -1.0
         self.actor: RequiredIndex[Actor] = RequiredIndex()
         self.actor_action: RequiredIndex[StringHolder] = RequiredIndex()
-        # TODO: figure out what this is
-        self.xc = 0xff
+        # which concurrent clip slot for this actor that this clip takes up
+        # the first clip is 0, if it ends before the next starts then the
+        # next is 0, but if another one starts before this one ends, the
+        # next is 1, etc.
+        self.actor_concurrent_clip = 0xff
         self.params: typing.Optional[Container] = None
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
 
@@ -21,7 +24,7 @@ class Clip(BinaryObject):
         self.duration = stream.read_f32()
         self.actor._idx = stream.read_u16()
         self.actor_action._idx = stream.read_u16()
-        self.xc = stream.read_u8()
+        self.actor_concurrent_clip = stream.read_u8()
         stream.skip(3)
         self.params = stream.read_ptr_object(Container)
 
@@ -30,7 +33,7 @@ class Clip(BinaryObject):
         stream.write(f32(self.duration))
         stream.write(u16(self.actor._idx))
         stream.write(u16(self.actor_action._idx))
-        stream.write(u8(self.xc))
+        stream.write(u8(self.actor_concurrent_clip))
         stream.write(u8(0) * 3)
         self._params_offset_writer = stream.write_placeholder_ptr_if(bool(self.params))
 
