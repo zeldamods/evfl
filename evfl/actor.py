@@ -15,8 +15,10 @@ class Actor(BinaryObject):
         self.actions: typing.List[StringHolder] = []
         self.queries: typing.List[StringHolder] = []
         self.params: typing.Optional[Container] = None
-        # TODO: investigate what this is (always 1 for flowcharts, but sometimes > 1 for timelines)
-        self.x36: int = 0xffff
+        # lists how many currently-playing clips an actor can be part of at the same time
+        # if a clip with the actor has to Enter before an already-playing clip Leaves
+        # then this will be > 1
+        self.concurrent_clips: int = 0xffff
 
         # Offsets are used to handle the case where write_extra_data is called before _do_write
         # (which happens for timelines).
@@ -47,7 +49,7 @@ class Actor(BinaryObject):
         num_actions = stream.read_u16()
         num_queries = stream.read_u16()
         self.argument_entry_point._idx = stream.read_u16()
-        self.x36 = stream.read_u16()
+        self.concurrent_clips = stream.read_u16()
 
         with SeekContext(stream, actions_offset):
             for i in range(num_actions):
@@ -67,7 +69,7 @@ class Actor(BinaryObject):
         stream.write(u16(len(self.actions) if self.actions else 0))
         stream.write(u16(len(self.queries) if self.queries else 0))
         stream.write(u16(self.argument_entry_point._idx))
-        stream.write(u16(self.x36))
+        stream.write(u16(self.concurrent_clips))
 
         if self._actions_offset:
             self._actions_offset_writer.write(stream, u64(self._actions_offset))
