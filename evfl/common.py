@@ -1,14 +1,17 @@
 from evfl.util import *
 
+
 class ActorIdentifier(BinaryObject):
-    __slots__ = ['name', 'sub_name']
-    def __init__(self, name: str = '', sub_name: str = '') -> None:
+    __slots__ = ["name", "sub_name"]
+
+    def __init__(self, name: str = "", sub_name: str = "") -> None:
         super().__init__()
         self.name: str = name
         self.sub_name: str = sub_name
 
     def __str__(self) -> str:
-        return f'{self.name}[{self.sub_name}]' if self.sub_name else self.name
+        return f"{self.name}[{self.sub_name}]" if self.sub_name else self.name
+
     def __repr__(self) -> str:
         if not self.sub_name:
             return f'ActorIdentifier(name="{self.name}")'
@@ -31,18 +34,28 @@ class ActorIdentifier(BinaryObject):
         stream.write_string_ref(self.name)
         stream.write_string_ref(self.sub_name)
 
+
 class Argument(str):
     pass
 
+
 class StringHolder:
-    __slots__ = ['v']
-    def __init__(self, v='') -> None:
+    __slots__ = ["v"]
+
+    def __init__(self, v="") -> None:
         self.v = v
+
     def __str__(self) -> str:
         return self.v
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
     def __hash__(self) -> int:
         return hash(self.v)
+
     def __eq__(self, other) -> bool:
         return self.v == other.v
+
     def __ne__(self, other) -> bool:
         return not (self == other)
