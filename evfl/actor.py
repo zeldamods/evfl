@@ -16,9 +16,10 @@ class Actor(BinaryObject):
         self.actions: typing.List[StringHolder] = []
         self.queries: typing.List[StringHolder] = []
         self.params: typing.Optional[Container] = None
-        # lists how many currently-playing clips an actor can be part of at the same time
-        # if a clip with the actor has to Enter before an already-playing clip Leaves
-        # then this will be > 1
+        # For flowcharts: always = 1
+        # For timelines: lists how many currently-playing clips an actor can be part of
+        # at the same time. If a clip with the actor has to Enter before an already-playing
+        # clip Leaves then this will be > 1
         self.concurrent_clips: int = 0xFFFF
 
         # Offsets are used to handle the case where write_extra_data is called before _do_write
