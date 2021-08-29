@@ -3,8 +3,18 @@ from evfl.container import Container
 from evfl.common import StringHolder
 from evfl.util import *
 
+
 class Clip(BinaryObject):
-    __slots__ = ['start_time', 'duration', 'actor', 'actor_action', 'actor_concurrent_clip', 'params', '_params_offset_writer']
+    __slots__ = [
+        "start_time",
+        "duration",
+        "actor",
+        "actor_action",
+        "actor_concurrent_clip",
+        "params",
+        "_params_offset_writer",
+    ]
+
     def __init__(self) -> None:
         super().__init__()
         self.start_time = -1.0
@@ -15,9 +25,19 @@ class Clip(BinaryObject):
         # the first clip is 0, if it ends before the next starts then the
         # next is 0, but if another one starts before this one ends, the
         # next is 1, etc.
-        self.actor_concurrent_clip = 0xff
+        self.actor_concurrent_clip = 0xFF
         self.params: typing.Optional[Container] = None
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
+
+    def __repr__(self) -> str:
+        return (
+            f"Clip(actor={self.actor}, "
+            f"actor_action={self.actor_action}, "
+            f"actor_concurrent_clip={self.actor_concurrent_clip}, "
+            f"start_time={self.start_time}, "
+            f"duration={self.duration}, "
+            f"params={self.params})"
+        )
 
     def _do_read(self, stream: ReadStream) -> None:
         self.start_time = stream.read_f32()
@@ -42,8 +62,10 @@ class Clip(BinaryObject):
             self._params_offset_writer.write_current_offset(stream)
             self.params.write(stream)
 
+
 class Oneshot(BinaryObject):
-    __slots__ = ['time', 'actor', 'actor_action', 'params', '_params_offset_writer']
+    __slots__ = ["time", "actor", "actor_action", "params", "_params_offset_writer"]
+
     def __init__(self) -> None:
         super().__init__()
         self.time = -1.0
@@ -51,6 +73,14 @@ class Oneshot(BinaryObject):
         self.actor_action: RequiredIndex[StringHolder] = RequiredIndex()
         self.params: typing.Optional[Container] = None
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
+
+    def __repr__(self) -> str:
+        return (
+            f"Oneshot(actor={self.actor}, "
+            f"actor_action={self.actor_action}, "
+            f"time={self.time}, "
+            f"params={self.params})"
+        )
 
     def _do_read(self, stream: ReadStream) -> None:
         self.time = stream.read_f32()
@@ -71,14 +101,23 @@ class Oneshot(BinaryObject):
             self._params_offset_writer.write_current_offset(stream)
             self.params.write(stream)
 
+
 class Cut(BinaryObject):
     def __init__(self) -> None:
         super().__init__()
-        self.start_time = -1.0 # TODO: is this correct?
-        self.x4 = 0xffffffff # TODO: what is this?
-        self.name = ''
+        self.start_time = -1.0  # TODO: is this correct?
+        self.x4 = 0xFFFFFFFF  # TODO: what is this?
+        self.name = ""
         self.params: typing.Optional[Container] = None
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
+
+    def __repr__(self) -> str:
+        return (
+            f"Clip(name={self.name}, "
+            f"start_time={self.start_time}, "
+            f"params={self.params}, "
+            f"x4={self.x4})"
+        )
 
     def _do_read(self, stream: ReadStream) -> None:
         self.start_time = stream.read_f32()
@@ -97,12 +136,14 @@ class Cut(BinaryObject):
             self._params_offset_writer.write_current_offset(stream)
             self.params.write(stream)
 
+
 class Trigger(BinaryObject):
-    __slots__ = ['clip', 'type']
+    __slots__ = ["clip", "type"]
+
     def __init__(self) -> None:
         super().__init__()
         self.clip: RequiredIndex[Clip] = RequiredIndex()
-        self.type = 0xff
+        self.type = 0xFF
 
     def _do_read(self, stream: ReadStream) -> None:
         self.clip._idx = stream.read_u16()
@@ -115,12 +156,13 @@ class Trigger(BinaryObject):
         stream.write(u8(0))
 
     def __repr__(self) -> str:
-        return f'Trigger(clip={self.clip._idx}, type={self.type})'
+        return f"Trigger(clip={self.clip}, type={self.type})"
+
 
 class Subtimeline(BinaryObject):
     def __init__(self) -> None:
         super().__init__()
-        self.name = ''
+        self.name = ""
 
     def _do_read(self, stream: ReadStream) -> None:
         self.name = stream.read_string_ref()
@@ -128,10 +170,11 @@ class Subtimeline(BinaryObject):
     def _do_write(self, stream: WriteStream) -> None:
         stream.write_string_ref(self.name)
 
+
 class Timeline(BinaryObject):
     def __init__(self) -> None:
         super().__init__()
-        self.name = ''
+        self.name = ""
         self.duration = -1.0
         self.actors: typing.List[Actor] = []
         self.clips: typing.List[Clip] = []
@@ -142,6 +185,19 @@ class Timeline(BinaryObject):
         self.params: typing.Optional[Container] = None
 
         self._self_offset = -1
+
+    def __repr__(self) -> str:
+        return (
+            f"Timeline(name={self.name}, "
+            f"duration={self.duration}, "
+            f"actors={self.actors}, "
+            f"clips={self.clips}, "
+            f"oneshots={self.oneshots}, "
+            f"triggers={self.triggers}, "
+            f"subtimelines={self.subtimelines}, "
+            f"cuts={self.cuts}, "
+            f"params={self.params})"
+        )
 
     def _do_read(self, stream: ReadStream) -> None:
         magic = stream.read_u32()
@@ -212,10 +268,10 @@ class Timeline(BinaryObject):
         # Header
         stream.align(8)
         self._self_offset = stream.tell()
-        stream.write(b'TLIN')
+        stream.write(b"TLIN")
         string_pool_rel_offset = stream.write_placeholder_u32()
-        stream.write(u32(0)) # x8
-        stream.write(u32(0)) # xc
+        stream.write(u32(0))  # x8
+        stream.write(u32(0))  # xc
         stream.write(f32(self.duration))
         stream.write(u16(len(self.actors)))
         stream.write(u16(self._get_action_count()))
@@ -226,9 +282,15 @@ class Timeline(BinaryObject):
         stream.write_string_ref(self.name)
         actors_offset_writer = stream.write_placeholder_ptr_if(bool(self.actors), register=True)
         clips_offset_writer = stream.write_placeholder_ptr_if(bool(self.clips), register=True)
-        oneshots_offset_writer = stream.write_placeholder_ptr_if(bool(self.oneshots), register=True)
-        triggers_offset_writer = stream.write_placeholder_ptr_if(bool(self.triggers), register=True)
-        subtimelines_offset_writer = stream.write_placeholder_ptr_if(bool(self.subtimelines), register=True)
+        oneshots_offset_writer = stream.write_placeholder_ptr_if(
+            bool(self.oneshots), register=True
+        )
+        triggers_offset_writer = stream.write_placeholder_ptr_if(
+            bool(self.triggers), register=True
+        )
+        subtimelines_offset_writer = stream.write_placeholder_ptr_if(
+            bool(self.subtimelines), register=True
+        )
         cuts_offset_writer = stream.write_placeholder_ptr_if(bool(self.cuts), register=True)
         if param_offset:
             stream.register_pointer(stream.tell())
