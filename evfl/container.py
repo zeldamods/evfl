@@ -6,20 +6,33 @@ from evfl.enums import ContainerDataType
 from evfl.util import *
 
 ContainerDataPyTypes = typing.Union[
-    int, bool, float, str, Argument, ActorIdentifier,
-    typing.List[int], typing.List[bool], typing.List[float], typing.List[str],
+    int,
+    bool,
+    float,
+    str,
+    Argument,
+    ActorIdentifier,
+    typing.List[int],
+    typing.List[bool],
+    typing.List[float],
+    typing.List[str],
 ]
 
+
 class Container(BinaryObject):
-    __slots__ = ['data']
+    __slots__ = ["data"]
+
     def __init__(self) -> None:
         super().__init__()
         self.data: typing.Dict[str, ContainerDataPyTypes] = dict()
 
+    def __repr__(self) -> str:
+        return f"Container({self.data})"
+
     def _do_read(self, stream: ReadStream) -> None:
         data_type = stream.read_u8()
         if data_type != ContainerDataType.kContainer:
-            raise ValueError('Invalid data type (expected kContainer)')
+            raise ValueError("Invalid data type (expected kContainer)")
         stream.skip(1)
         num_items = stream.read_u16()
         x4 = stream.read_u32()
@@ -68,18 +81,20 @@ class Container(BinaryObject):
             return actor_identifier
 
         if data_type == ContainerDataType.kContainer:
-            raise ValueError('Unexpected container')
+            raise ValueError("Unexpected container")
 
         if data_type == ContainerDataType.kWString or data_type == ContainerDataType.kWStringArray:
-            raise ValueError(f'Unhandled data type: wide string or wide string array ({data_type})')
+            raise ValueError(
+                f"Unhandled data type: wide string or wide string array ({data_type})"
+            )
 
-        raise ValueError(f'Unknown data type: {data_type}')
+        raise ValueError(f"Unknown data type: {data_type}")
 
     def _do_write(self, stream: WriteStream) -> None:
         stream.write(u8(ContainerDataType.kContainer))
-        stream.write(u8(0)) # Padding
+        stream.write(u8(0))  # Padding
         stream.write(u16(len(self.data)))
-        stream.write(u32(0)) # Unused
+        stream.write(u32(0))  # Unused
 
         dic = DicWriter()
         for key in self.data.keys():
@@ -99,10 +114,10 @@ class Container(BinaryObject):
 
     def _write_item_common_header(self, stream: WriteStream, data_type, num_items: int) -> None:
         stream.write(u8(data_type))
-        stream.write(u8(0)) # Padding
+        stream.write(u8(0))  # Padding
         stream.write(u16(num_items))
-        stream.write(u32(0)) # Unused
-        stream.write(u64(0)) # DIC pointer
+        stream.write(u32(0))  # Unused
+        stream.write(u64(0))  # DIC pointer
 
     def _write_item(self, stream: WriteStream, value: ContainerDataPyTypes) -> None:
         # Must come first because bool is derived from int.
@@ -156,7 +171,7 @@ class Container(BinaryObject):
             elif isinstance(value[0], float):
                 self._write_item_common_header(stream, ContainerDataType.kFloatArray, len(value))
                 for v in value:
-                    stream.write(f32(v)) # type: ignore
+                    stream.write(f32(v))  # type: ignore
 
             elif isinstance(value[0], str):
                 self._write_item_common_header(stream, ContainerDataType.kStringArray, len(value))
@@ -166,10 +181,10 @@ class Container(BinaryObject):
                 for ptr_writer, v in zip(ptr_writers, value):
                     stream.align(8)
                     ptr_writer.write_current_offset(stream)
-                    stream.write(pascal_string(v)) # type: ignore
+                    stream.write(pascal_string(v))  # type: ignore
 
             else:
-                raise ValueError(f'Invalid array data type')
+                raise ValueError(f"Invalid array data type")
 
         else:
-            raise ValueError(f'Invalid data type')
+            raise ValueError(f"Invalid data type")
