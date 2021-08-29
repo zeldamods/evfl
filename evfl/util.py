@@ -4,46 +4,67 @@ import io
 import struct
 import typing
 
-_NUL_CHAR = b'\x00'
+_NUL_CHAR = b"\x00"
+
 
 class IdGenerator:
     def __init__(self):
         self._id = 0
+
     def gen_id(self):
         r = self._id
         self._id += 1
         return r
 
-T = typing.TypeVar('T')
+
+T = typing.TypeVar("T")
+
+
 class Index(typing.Generic[T]):
-    __slots__ = ['v', '_idx']
-    def __init__(self, idx: int = 0xffff) -> None:
+    __slots__ = ["v", "_idx"]
+
+    def __init__(self, idx: int = 0xFFFF) -> None:
         self.v: typing.Optional[T] = None
         self._idx = idx
+
+    def __repr__(self) -> str:
+        return f"{self.v}" if self.v else "None"
+
     def set_value(self, values: typing.List[T]) -> None:
-        self.v = values[self._idx] if self._idx != 0xffff else None
+        self.v = values[self._idx] if self._idx != 0xFFFF else None
+
     def set_index(self, idx_map: typing.Dict[T, int]) -> None:
-        self._idx = idx_map[self.v] if self.v else 0xffff
+        self._idx = idx_map[self.v] if self.v else 0xFFFF
+
 
 class RequiredIndex(typing.Generic[T]):
-    __slots__ = ['v', '_idx']
-    def __init__(self, idx: int = 0xffff) -> None:
+    __slots__ = ["v", "_idx"]
+
+    def __init__(self, idx: int = 0xFFFF) -> None:
         self.v: T
         self._idx = idx
+
+    def __repr__(self) -> str:
+        return f"{self.v}"
+
     def set_value(self, values: typing.List[T]) -> None:
         self.v = values[self._idx]
+
     def set_index(self, idx_map: typing.Dict[T, int]) -> None:
         self._idx = idx_map[self.v]
+
 
 def make_index(v: typing.Optional[T]) -> Index[T]:
     idx: Index[T] = Index()
     idx.v = v
     return idx
 
+
 def make_rindex(v: T) -> RequiredIndex[T]:
     idx: RequiredIndex[T] = RequiredIndex()
     idx.v = v
     return idx
+
 
 def make_values_to_index_map(iterable: typing.Iterable[T]) -> typing.Dict[T, int]:
     d: typing.Dict[T, int] = dict()
@@ -51,64 +72,94 @@ def make_values_to_index_map(iterable: typing.Iterable[T]) -> typing.Dict[T, int
         d[value] = len(d)
     return d
 
+
 def align_up(n: int, align: int) -> int:
     return (n + align - 1) & -align
 
+
 def u8(value: int) -> bytes:
-    return struct.pack('B', value)
+    return struct.pack("B", value)
+
+
 def u16(value: int) -> bytes:
-    return struct.pack('<H', value)
+    return struct.pack("<H", value)
+
+
 def s16(value: int) -> bytes:
-    return struct.pack('<h', value)
+    return struct.pack("<h", value)
+
+
 def u32(value: int) -> bytes:
-    return struct.pack('<I', value)
+    return struct.pack("<I", value)
+
+
 def s32(value: int) -> bytes:
-    return struct.pack('<i', value)
+    return struct.pack("<i", value)
+
+
 def u64(value: int) -> bytes:
-    return struct.pack('<Q', value)
+    return struct.pack("<Q", value)
+
+
 def s64(value: int) -> bytes:
-    return struct.pack('<q', value)
+    return struct.pack("<q", value)
+
+
 def f32(value: float) -> bytes:
-    return struct.pack('<f', value)
+    return struct.pack("<f", value)
+
+
 def pascal_string(data: str) -> bytes:
     raw_data = data.encode()
     return u16(len(raw_data)) + raw_data + _NUL_CHAR
 
+
 def read_string(data: bytes, offset: int) -> str:
-    end = data.find(_NUL_CHAR, offset) # type: ignore
+    end = data.find(_NUL_CHAR, offset)  # type: ignore
     return data[offset:end].decode()
 
+
 def read_pascal_string(data, offset: int) -> str:
-    length: int = struct.unpack_from('<H', data, offset)[0]
-    return bytes(data[offset+2:offset+2+length]).decode()
+    length: int = struct.unpack_from("<H", data, offset)[0]
+    return bytes(data[offset + 2 : offset + 2 + length]).decode()
+
 
 class Stream:
-    __slots__ = ['_stream']
+    __slots__ = ["_stream"]
+
     def __init__(self, stream: typing.BinaryIO) -> None:
         self._stream = stream
+
     def seek(self, *args) -> None:
         self._stream.seek(*args)
+
     def tell(self) -> int:
         return self._stream.tell()
+
     def align(self, align: int) -> None:
         self.seek(align_up(self.tell(), align))
+
     def skip(self, n: int) -> None:
         self._stream.seek(n, 1)
+
 
 class SeekContext:
     def __init__(self, stream: Stream, offset: int) -> None:
         self._stream = stream
         self._offset = offset
         self._original_offset = self._stream.tell()
+
     def __enter__(self):
         self._stream.seek(self._offset)
         return self._offset
+
     def __exit__(self, *args):
         self._stream.seek(self._original_offset)
 
+
 class ReadStream(Stream):
     def __init__(self, data: bytes) -> None:
-        stream = io.BytesIO(memoryview(data)) # type: ignore
+        stream = io.BytesIO(memoryview(data))  # type: ignore
         super().__init__(stream)
         self.data = data
 
@@ -116,56 +167,72 @@ class ReadStream(Stream):
         return self._stream.read(*args)
 
     def read_u8(self) -> int:
-        return struct.unpack('B', self.read(1))[0]
+        return struct.unpack("B", self.read(1))[0]
+
     def read_u16(self) -> int:
-        return struct.unpack('<H', self.read(2))[0]
+        return struct.unpack("<H", self.read(2))[0]
+
     def read_u32(self) -> int:
-        return struct.unpack('<I', self.read(4))[0]
+        return struct.unpack("<I", self.read(4))[0]
+
     def read_s32(self) -> int:
-        return struct.unpack('<i', self.read(4))[0]
+        return struct.unpack("<i", self.read(4))[0]
+
     def read_u64(self) -> int:
-        return struct.unpack('<Q', self.read(8))[0]
+        return struct.unpack("<Q", self.read(8))[0]
+
     def read_f32(self) -> float:
-        return struct.unpack('<f', self.read(4))[0]
+        return struct.unpack("<f", self.read(4))[0]
+
     def read_string_ref(self) -> str:
         ptr = self.read_u64()
         if ptr == 0:
-            return ''
+            return ""
         return read_pascal_string(self.data, ptr)
 
-    ReadObjectType = typing.TypeVar('ReadObjectType')
-    def read_ptr_object(self, t: typing.Type[ReadObjectType], *args) -> typing.Optional[ReadObjectType]:
+    ReadObjectType = typing.TypeVar("ReadObjectType")
+
+    def read_ptr_object(
+        self, t: typing.Type[ReadObjectType], *args
+    ) -> typing.Optional[ReadObjectType]:
         ptr = self.read_u64()
         if ptr == 0:
             return None
         with SeekContext(self, ptr):
-            obj = t(*args) # type: ignore
-            obj.read(self) # type: ignore
+            obj = t(*args)  # type: ignore
+            obj.read(self)  # type: ignore
         return obj
 
-    def read_ptr_objects(self, t: typing.Type[ReadObjectType], n, *args) -> typing.List[ReadObjectType]:
+    def read_ptr_objects(
+        self, t: typing.Type[ReadObjectType], n, *args
+    ) -> typing.List[ReadObjectType]:
         ptr = self.read_u64()
         if ptr == 0 or n == 0:
             return []
         result = []
         with SeekContext(self, ptr):
             for i in range(n):
-                obj = t(*args) # type: ignore
-                obj.read(self) # type: ignore
+                obj = t(*args)  # type: ignore
+                obj.read(self)  # type: ignore
                 result.append(obj)
         return result
 
+
 class PlaceholderWriter:
-    __slots__ = ['_offset']
+    __slots__ = ["_offset"]
+
     def __init__(self, offset: int) -> None:
         self._offset = offset
+
     def write(self, stream, data: bytes) -> None:
         current_pos = stream.tell()
         stream.seek(self._offset)
         stream.write(data)
         stream.seek(current_pos)
+
     def write_current_offset(self, stream) -> None:
         self.write(stream, u64(stream.tell()))
+
 
 class WriteStream(Stream):
     class _StringRef(typing.NamedTuple):
@@ -176,9 +243,11 @@ class WriteStream(Stream):
     def __init__(self, stream: typing.BinaryIO) -> None:
         super().__init__(stream)
         self._pointers: typing.Set[int] = set()
-        self._strings: typing.DefaultDict[str, typing.List[WriteStream._StringRef]] = defaultdict(list)
+        self._strings: typing.DefaultDict[str, typing.List[WriteStream._StringRef]] = defaultdict(
+            list
+        )
         # The empty string is always the first string.
-        self._strings[''] = []
+        self._strings[""] = []
         self._relocation_table_offset = 0
 
     def register_string(self, s: str) -> None:
@@ -204,11 +273,13 @@ class WriteStream(Stream):
         return PlaceholderWriter(current_offset)
 
     def write_placeholder_u16(self) -> PlaceholderWriter:
-        return self.write_placeholder(u16(0xffff))
+        return self.write_placeholder(u16(0xFFFF))
+
     def write_placeholder_u32(self) -> PlaceholderWriter:
-        return self.write_placeholder(u32(0xffffffff))
+        return self.write_placeholder(u32(0xFFFFFFFF))
+
     def write_placeholder_u64(self) -> PlaceholderWriter:
-        return self.write_placeholder(u64(0xffffffffffffffff))
+        return self.write_placeholder(u64(0xFFFFFFFFFFFFFFFF))
 
     def write_placeholder_ptr(self) -> PlaceholderWriter:
         self.register_pointer(self.tell())
@@ -217,16 +288,16 @@ class WriteStream(Stream):
     def write_placeholder_ptr_if(self, condition: bool, register=False) -> PlaceholderWriter:
         if not condition:
             self.write_nullptr(register=register)
-            return None # type: ignore
+            return None  # type: ignore
         return self.write_placeholder_ptr()
 
     def write_string_ref(self, data: str, is_header_name: bool = False) -> None:
         self._strings[data].append(self._StringRef(self.tell(), is_header_name))
         if is_header_name:
-            self.write(u32(0xffffffff))
+            self.write(u32(0xFFFFFFFF))
         else:
             self.register_pointer(self.tell())
-            self.write(u64(0xffffffffffffffff))
+            self.write(u64(0xFFFFFFFFFFFFFFFF))
 
     def finalise(self) -> None:
         self.align(8)
@@ -237,15 +308,15 @@ class WriteStream(Stream):
         self._write_relocation_table(data_end)
 
     def _write_string_pool(self) -> None:
-        self.write(b'STR ')
-        self.write(u32(0)) # Unused
-        self.write(u64(0)) # Unused
+        self.write(b"STR ")
+        self.write(u32(0))  # Unused
+        self.write(u64(0))  # Unused
         # The empty string is not counted.
         self.write(u32(len(self._strings) - 1))
 
         def sort_string(s: str):
             # XXX: Slow.
-            return bin(int.from_bytes(s.encode(), byteorder='big'))[2:][::-1]
+            return bin(int.from_bytes(s.encode(), byteorder="big"))[2:][::-1]
 
         for string in sorted(self._strings.keys(), key=sort_string):
             offset = self.tell()
@@ -259,20 +330,20 @@ class WriteStream(Stream):
     def _write_relocation_table(self, data_end: int) -> None:
         # Table
         self._relocation_table_offset = self.tell()
-        self.write(b'RELT')
+        self.write(b"RELT")
         self.write(u32(self._relocation_table_offset))
         # It's extremely unlikely that the number of entries will ever exceed 2^32 - 1,
         # so assume that only one section is needed.
         # (If a file does have that many sections, you should probably worry about the
         # offsets being 32 bit instead.)
         self.write(u32(1))
-        self.write(u32(0)) # Padding
+        self.write(u32(0))  # Padding
 
         # First section
-        self.write(u64(0)) # Alternate offset (unused by Nintendo)
-        self.write(u32(0)) # Used to calculate the base pointer for the alternate method (unused)
+        self.write(u64(0))  # Alternate offset (unused by Nintendo)
+        self.write(u32(0))  # Used to calculate the base pointer for the alternate method (unused)
         self.write(u32(data_end))
-        self.write(u32(0)) # Entries to skip
+        self.write(u32(0))  # Entries to skip
         num_entries_writer: PlaceholderWriter = self.write_placeholder_u32()
 
         # Section entries
@@ -280,14 +351,14 @@ class WriteStream(Stream):
         pointers = set(self._pointers)
         pointers_list: typing.List[int] = sorted(pointers)
         for p in pointers_list:
-            if p not in pointers: # Already processed.
+            if p not in pointers:  # Already processed.
                 continue
             # As a space optimisation, each entry can cover up to 32 contiguous pointers.
             # A bitflag is used to indicate which pointers are valid and need relocation.
             # Try to process as many pointers as possible with a single entry.
             flag = 0
             for i in range(0x20):
-                address = p + 8*i
+                address = p + 8 * i
                 if address in pointers:
                     flag |= 1 << i
                     pointers.remove(address)
@@ -297,15 +368,17 @@ class WriteStream(Stream):
 
         num_entries_writer.write(self, u32(num_entries))
 
+
 class BinaryObject(metaclass=abc.ABCMeta):
-    __slots__ = ['_offsets_to_this']
+    __slots__ = ["_offsets_to_this"]
+
     def __init__(self) -> None:
         self._offsets_to_this: typing.List[int] = []
 
     def write_placeholder_offset(self, stream: WriteStream) -> None:
         self._offsets_to_this.append(stream.tell())
         stream.register_pointer(stream.tell())
-        stream.write(u64(0xffffffffffffffff))
+        stream.write(u64(0xFFFFFFFFFFFFFFFF))
 
     @abc.abstractmethod
     def _do_read(self, stream: ReadStream) -> None:

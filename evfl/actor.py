@@ -3,20 +3,24 @@ from evfl.container import Container
 from evfl.entry_point import EntryPoint
 from evfl.util import *
 
+
 class Actor(BinaryObject):
     def __init__(self) -> None:
         super().__init__()
         self.identifier = ActorIdentifier()
         # If specified, actor identifier arguments that are passed as parameters
         # with this argument name will bind to this actor.
-        self.argument_name = ''
+        self.argument_name = ""
         # Entry point where this actor is used.
         self.argument_entry_point: Index[EntryPoint] = Index()
         self.actions: typing.List[StringHolder] = []
         self.queries: typing.List[StringHolder] = []
         self.params: typing.Optional[Container] = None
-        # TODO: investigate what this is (always 1 for flowcharts, but sometimes > 1 for timelines)
-        self.x36: int = 0xffff
+        # For flowcharts: always = 1
+        # For timelines: lists how many currently-playing clips an actor can be part of
+        # at the same time. If a clip with the actor has to Enter before an already-playing
+        # clip Leaves then this will be > 1
+        self.concurrent_clips: int = 0xFFFF
 
         # Offsets are used to handle the case where write_extra_data is called before _do_write
         # (which happens for timelines).
@@ -27,8 +31,20 @@ class Actor(BinaryObject):
         self._params_offset_writer: typing.Optional[PlaceholderWriter] = None
         self._params_offset: typing.Optional[int] = None
 
+    def __repr__(self) -> str:
+        return (
+            f"Actor(identifier={self.identifier}, "
+            f"argument_name={self.argument_name}, "
+            f"argument_entry_point={self.argument_entry_point}, "
+            f"actions={self.actions}, "
+            f"queries={self.queries}, "
+            f"params={self.params}, "
+            f"concurrent_clips={self.concurrent_clips})"
+        )
+
     def find_action(self, name: str):
         return self._find_action_or_query(self.actions, name)
+
     def find_query(self, name: str):
         return self._find_action_or_query(self.queries, name)
 
@@ -47,7 +63,7 @@ class Actor(BinaryObject):
         num_actions = stream.read_u16()
         num_queries = stream.read_u16()
         self.argument_entry_point._idx = stream.read_u16()
-        self.x36 = stream.read_u16()
+        self.concurrent_clips = stream.read_u16()
 
         with SeekContext(stream, actions_offset):
             for i in range(num_actions):
@@ -60,14 +76,18 @@ class Actor(BinaryObject):
     def _do_write(self, stream: WriteStream) -> None:
         self.identifier.write(stream)
         stream.write_string_ref(self.argument_name)
-        self._actions_offset_writer = stream.write_placeholder_ptr_if(bool(self.actions), register=True)
-        self._queries_offset_writer = stream.write_placeholder_ptr_if(bool(self.queries), register=True)
+        self._actions_offset_writer = stream.write_placeholder_ptr_if(
+            bool(self.actions), register=True
+        )
+        self._queries_offset_writer = stream.write_placeholder_ptr_if(
+            bool(self.queries), register=True
+        )
         # Yes, Nintendo inconsistency.
         self._params_offset_writer = stream.write_placeholder_ptr_if(bool(self.params))
         stream.write(u16(len(self.actions) if self.actions else 0))
         stream.write(u16(len(self.queries) if self.queries else 0))
         stream.write(u16(self.argument_entry_point._idx))
-        stream.write(u16(self.x36))
+        stream.write(u16(self.concurrent_clips))
 
         if self._actions_offset:
             self._actions_offset_writer.write(stream, u64(self._actions_offset))
