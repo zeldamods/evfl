@@ -1,3 +1,4 @@
+from enum import IntEnum
 from evfl.actor import Actor
 from evfl.container import Container
 from evfl.common import StringHolder
@@ -137,26 +138,40 @@ class Cut(BinaryObject):
             self.params.write(stream)
 
 
+class TriggerType(IntEnum):
+    ENTER = 1
+    LEAVE = 2
+    NONE = 0xFF
+
+
 class Trigger(BinaryObject):
     __slots__ = ["clip", "type"]
 
     def __init__(self) -> None:
         super().__init__()
         self.clip: RequiredIndex[Clip] = RequiredIndex()
-        self.type = 0xFF
+        self.type = TriggerType(0xFF)
 
     def _do_read(self, stream: ReadStream) -> None:
         self.clip._idx = stream.read_u16()
-        self.type = stream.read_u8()
+        self.type = TriggerType(stream.read_u8())
         stream.skip(1)
 
     def _do_write(self, stream: WriteStream) -> None:
         stream.write(u16(self.clip._idx))
-        stream.write(u8(self.type))
+        stream.write(u8(self.type.value))
         stream.write(u8(0))
 
     def __repr__(self) -> str:
         return f"Trigger(clip={self.clip}, type={self.type})"
+    
+    def get_trigger_time(self) -> float:
+        if self.type == TriggerType.ENTER:
+            return self.clip.v.start_time
+        elif self.type == TriggerType.LEAVE:
+            return self.clip.v.start_time + self.clip.v.duration
+        else:
+            return 0.0
 
 
 class Subtimeline(BinaryObject):
@@ -254,7 +269,7 @@ class Timeline(BinaryObject):
             t.clip.set_index(clip_to_idx)
 
     def _do_write(self, stream: WriteStream) -> None:
-        self.triggers.sort(key=lambda a: a.clip.v.start_time + (a.type-1) * a.clip.v.duration)
+        self.triggers.sort(key=lambda a: a.get_trigger_time())
         self._set_indexes_from_values()
 
         for actor in self.actors:
