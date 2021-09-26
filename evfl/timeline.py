@@ -254,6 +254,7 @@ class Timeline(BinaryObject):
             t.clip.set_index(clip_to_idx)
 
     def _do_write(self, stream: WriteStream) -> None:
+        self.triggers.sort(key=lambda a: a.clip.v.start_time + (a.type-1) * a.clip.v.duration)
         self._set_indexes_from_values()
 
         for actor in self.actors:
