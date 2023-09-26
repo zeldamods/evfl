@@ -5,18 +5,21 @@ from evfl.dic import DicReader
 from evfl.enums import VariableType
 import os
 
+
 class Variable(BinaryObject):
-    __slots__ = ['num', 'type', 'value']
+    __slots__ = ["num", "type", "value"]
+
     def __init__(self) -> None:
         super().__init__()
         self.type: VariableType
+
     def _do_read(self, stream: ReadStream) -> None:
         offset = stream.tell()
-        stream.seek( 8, os.SEEK_CUR )
+        stream.seek(8, os.SEEK_CUR)
         self.num = stream.read_u16()
         self.type = stream.read_u16()
         assert self.type == VariableType.kInteger or self.type == VariableType.kFloat
-        stream.seek( offset )
+        stream.seek(offset)
         if self.type == VariableType.kInteger:
             self.value = stream.read_s32()
         elif self.type == VariableType.kFloat:
@@ -32,6 +35,7 @@ class Variable(BinaryObject):
         stream.write(u16(self.num))
         stream.write(u16(self.type))
         stream.write(u32(0))
+
 
 class EntryPoint(BinaryObject):
     __slots__ = ['name', 'main_event', '_sub_flow_event_indices', '_sub_flow_event_indices_offset_writer', 'items']
