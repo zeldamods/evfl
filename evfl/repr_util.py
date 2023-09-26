@@ -99,7 +99,7 @@ def generate_flowchart_graph(flow: EventFlow) -> list:
                 handle_next(nid, data.nxt.v, join_stack, queue)
 
     for i, entry in enumerate(flow.flowchart.entry_points):
-        builder.add_node(-1000-i, 'entry', {'name': entry.name})
+        builder.add_node(-1000-i, 'entry', {'name': entry.name, 'variables': entry.items})
         if entry.main_event.v:
             builder.add_edge(-1000-i, event_idx_map[entry.main_event.v])
             traverse(entry.main_event.v, [])
