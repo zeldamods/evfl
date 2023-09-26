@@ -71,3 +71,8 @@ class BuildResultType(enum.IntEnum):
     kInvalidOperation = 1
     kResFlowchartNotFound = 2
     kEntryPointNotFound = 3
+
+class VariableType(enum.IntEnum):
+    kInteger = 2
+    kFloat = 4
+
